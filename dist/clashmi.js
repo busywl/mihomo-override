@@ -55,6 +55,7 @@ function main(config) {
     "lazy": false
   }
 ];
+  const fallbackGroups = [];
   const aiGroup = {
   "name": "🤖 AI",
   "type": "select",
@@ -63,11 +64,14 @@ function main(config) {
     "🇸🇬 新加坡节点",
     "🇺🇸 美国节点",
     "🇭🇰 香港节点"
-  ]
+  ],
+  "include-all": false,
+  "exclude-type": "direct"
 };
   const mainGroupName = "良心云";
   const aiRule = "GEOSITE,category-ai-!cn,🤖 AI";
-  const customGroupNames = regionNames.concat([aiGroup.name]);
+  const fallbackGroupNames = fallbackGroups.map(function (group) { return group.name; });
+  const customGroupNames = regionNames.concat(fallbackGroupNames, [aiGroup.name]);
 
   if (!Array.isArray(config["proxy-groups"])) {
     config["proxy-groups"] = [];
@@ -80,7 +84,7 @@ function main(config) {
   config["proxy-groups"] = config["proxy-groups"].filter(function (group) {
     return !group || customGroupNames.indexOf(group.name) === -1;
   });
-  config["proxy-groups"] = config["proxy-groups"].concat(regionGroups, [aiGroup]);
+  config["proxy-groups"] = config["proxy-groups"].concat(regionGroups, fallbackGroups, [aiGroup]);
 
   // Put the four region groups at the front of the existing 良心云 group.
   const mainGroup = config["proxy-groups"].find(function (group) {
