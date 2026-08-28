@@ -78,7 +78,7 @@ function main(config) {
     "🇺🇸 美国节点",
     "🇭🇰 香港节点"
   ],
-  "include-all": true,
+  "include-all-proxies": true,
   "exclude-type": "direct"
 };
   const mainGroupName = "良心云";
