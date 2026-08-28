@@ -58,6 +58,26 @@ def load_source() -> dict[str, Any]:
     unknown = [region_id for region_id in ai_regions if region_id not in regions]
     if unknown:
         raise ValueError(f"ai.regions contains unknown region ids: {', '.join(unknown)}")
+    include_all_nodes = ai.get("include_all_nodes", False)
+    if not isinstance(include_all_nodes, bool):
+        raise ValueError("ai.include_all_nodes must be true or false")
+
+    fallback_groups = ai.get("fallback_groups", [])
+    if not isinstance(fallback_groups, list):
+        raise ValueError("ai.fallback_groups must be a list")
+    for index, raw_fallback in enumerate(fallback_groups):
+        fallback = require_mapping(raw_fallback, f"ai.fallback_groups[{index}]")
+        require_string(fallback.get("name"), f"ai.fallback_groups[{index}].name")
+        fallback_region = require_string(
+            fallback.get("region"), f"ai.fallback_groups[{index}].region"
+        )
+        if fallback_region not in regions:
+            raise ValueError(
+                f"ai.fallback_groups[{index}].region is unknown: {fallback_region}"
+            )
+        for key in ("interval", "max_failed_times"):
+            if not isinstance(fallback.get(key), int) or isinstance(fallback.get(key), bool):
+                raise ValueError(f"ai.fallback_groups[{index}].{key} must be an integer")
 
     return source
 
@@ -85,17 +105,38 @@ def build_model(source: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
+    fallback_groups: list[dict[str, Any]] = []
+    for fallback in ai.get("fallback_groups", []):
+        region = regions[fallback["region"]]
+        fallback_groups.append(
+            {
+                "name": fallback["name"],
+                "type": "fallback",
+                "include-all": True,
+                "exclude-type": "direct",
+                "filter": region["filter"],
+                "url": url_test["url"],
+                "interval": fallback["interval"],
+                "lazy": True,
+                "max-failed-times": fallback["max_failed_times"],
+            }
+        )
+
     ai_group_name = ai["name"]
     ai_group = {
         "name": ai_group_name,
         "type": "select",
-        "proxies": [regions[region_id]["name"] for region_id in ai["regions"]],
+        "proxies": [fallback["name"] for fallback in fallback_groups]
+        + [regions[region_id]["name"] for region_id in ai["regions"]],
+        "include-all": ai.get("include_all_nodes", False),
+        "exclude-type": "direct",
     }
 
     return {
         "main_group": main_group,
         "region_names": region_names,
         "region_groups": region_groups,
+        "fallback_groups": fallback_groups,
         "ai_group": ai_group,
         "ai_rule": f"GEOSITE,category-ai-!cn,{ai_group_name}",
     }
@@ -106,7 +147,7 @@ def write_openclash(model: dict[str, Any]) -> None:
     # proxy-groups+ appends groups, proxy-groups* updates the existing 良心云
     # group, and +rules prepends the AI rule without discarding airport rules.
     override = {
-        "proxy-groups+": model["region_groups"] + [model["ai_group"]],
+        "proxy-groups+": model["region_groups"] + model["fallback_groups"] + [model["ai_group"]],
         "proxy-groups*": {
             "where": {"name": model["main_group"]},
             "set": {"+proxies": model["region_names"]},
@@ -126,6 +167,7 @@ def write_openclash(model: dict[str, Any]) -> None:
 def write_clashmi(model: dict[str, Any]) -> None:
     region_names = json.dumps(model["region_names"], ensure_ascii=False, indent=2)
     region_groups = json.dumps(model["region_groups"], ensure_ascii=False, indent=2)
+    fallback_groups = json.dumps(model["fallback_groups"], ensure_ascii=False, indent=2)
     ai_group = json.dumps(model["ai_group"], ensure_ascii=False, indent=2)
     main_group = json.dumps(model["main_group"], ensure_ascii=False)
     ai_rule = json.dumps(model["ai_rule"], ensure_ascii=False)
@@ -137,10 +179,12 @@ def write_clashmi(model: dict[str, Any]) -> None:
 function main(config) {{
   const regionNames = {region_names};
   const regionGroups = {region_groups};
+  const fallbackGroups = {fallback_groups};
   const aiGroup = {ai_group};
   const mainGroupName = {main_group};
   const aiRule = {ai_rule};
-  const customGroupNames = regionNames.concat([aiGroup.name]);
+  const fallbackGroupNames = fallbackGroups.map(function (group) {{ return group.name; }});
+  const customGroupNames = regionNames.concat(fallbackGroupNames, [aiGroup.name]);
 
   if (!Array.isArray(config["proxy-groups"])) {{
     config["proxy-groups"] = [];
@@ -153,7 +197,7 @@ function main(config) {{
   config["proxy-groups"] = config["proxy-groups"].filter(function (group) {{
     return !group || customGroupNames.indexOf(group.name) === -1;
   }});
-  config["proxy-groups"] = config["proxy-groups"].concat(regionGroups, [aiGroup]);
+  config["proxy-groups"] = config["proxy-groups"].concat(regionGroups, fallbackGroups, [aiGroup]);
 
   // Put the four region groups at the front of the existing 良心云 group.
   const mainGroup = config["proxy-groups"].find(function (group) {{
