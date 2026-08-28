@@ -58,9 +58,8 @@ def load_source() -> dict[str, Any]:
     unknown = [region_id for region_id in ai_regions if region_id not in regions]
     if unknown:
         raise ValueError(f"ai.regions contains unknown region ids: {', '.join(unknown)}")
-    include_all_nodes = ai.get("include_all_nodes", False)
-    if not isinstance(include_all_nodes, bool):
-        raise ValueError("ai.include_all_nodes must be true or false")
+    manual_node_group = ai.get("manual_node_group", "🌐 AI 手动节点")
+    require_string(manual_node_group, "ai.manual_node_group")
 
     fallback_groups = ai.get("fallback_groups", [])
     if not isinstance(fallback_groups, list):
@@ -122,16 +121,20 @@ def build_model(source: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
+    manual_node_group = {
+        "name": ai.get("manual_node_group", "🌐 AI 手动节点"),
+        "type": "select",
+        "include-all": True,
+        "exclude-type": "direct",
+    }
+
     ai_group_name = ai["name"]
     ai_group = {
         "name": ai_group_name,
         "type": "select",
         "proxies": [fallback["name"] for fallback in fallback_groups]
+        + [manual_node_group["name"]]
         + [regions[region_id]["name"] for region_id in ai["regions"]],
-        # Use the explicit proxy-only form. It is more reliable for OpenClash
-        # when this select group also references other strategy groups.
-        "include-all-proxies": ai.get("include_all_nodes", False),
-        "exclude-type": "direct",
     }
 
     return {
@@ -139,6 +142,7 @@ def build_model(source: dict[str, Any]) -> dict[str, Any]:
         "region_names": region_names,
         "region_groups": region_groups,
         "fallback_groups": fallback_groups,
+        "manual_node_group": manual_node_group,
         "ai_group": ai_group,
         "ai_rule": f"GEOSITE,category-ai-!cn,{ai_group_name}",
     }
@@ -149,7 +153,9 @@ def write_openclash(model: dict[str, Any]) -> None:
     # proxy-groups+ appends groups, proxy-groups* updates the existing 良心云
     # group, and +rules prepends the AI rule without discarding airport rules.
     override = {
-        "proxy-groups+": model["region_groups"] + model["fallback_groups"] + [model["ai_group"]],
+        "proxy-groups+": model["region_groups"]
+        + model["fallback_groups"]
+        + [model["manual_node_group"], model["ai_group"]],
         "proxy-groups*": {
             "where": {"name": model["main_group"]},
             "set": {"+proxies": model["region_names"]},
@@ -170,6 +176,7 @@ def write_clashmi(model: dict[str, Any]) -> None:
     region_names = json.dumps(model["region_names"], ensure_ascii=False, indent=2)
     region_groups = json.dumps(model["region_groups"], ensure_ascii=False, indent=2)
     fallback_groups = json.dumps(model["fallback_groups"], ensure_ascii=False, indent=2)
+    manual_node_group = json.dumps(model["manual_node_group"], ensure_ascii=False, indent=2)
     ai_group = json.dumps(model["ai_group"], ensure_ascii=False, indent=2)
     main_group = json.dumps(model["main_group"], ensure_ascii=False)
     ai_rule = json.dumps(model["ai_rule"], ensure_ascii=False)
@@ -182,11 +189,12 @@ function main(config) {{
   const regionNames = {region_names};
   const regionGroups = {region_groups};
   const fallbackGroups = {fallback_groups};
+  const manualNodeGroup = {manual_node_group};
   const aiGroup = {ai_group};
   const mainGroupName = {main_group};
   const aiRule = {ai_rule};
   const fallbackGroupNames = fallbackGroups.map(function (group) {{ return group.name; }});
-  const customGroupNames = regionNames.concat(fallbackGroupNames, [aiGroup.name]);
+  const customGroupNames = regionNames.concat(fallbackGroupNames, [manualNodeGroup.name, aiGroup.name]);
 
   if (!Array.isArray(config["proxy-groups"])) {{
     config["proxy-groups"] = [];
@@ -199,7 +207,7 @@ function main(config) {{
   config["proxy-groups"] = config["proxy-groups"].filter(function (group) {{
     return !group || customGroupNames.indexOf(group.name) === -1;
   }});
-  config["proxy-groups"] = config["proxy-groups"].concat(regionGroups, fallbackGroups, [aiGroup]);
+  config["proxy-groups"] = config["proxy-groups"].concat(regionGroups, fallbackGroups, [manualNodeGroup, aiGroup]);
 
   // Put the four region groups at the front of the existing 良心云 group.
   const mainGroup = config["proxy-groups"].find(function (group) {{
