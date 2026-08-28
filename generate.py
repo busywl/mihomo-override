@@ -128,7 +128,9 @@ def build_model(source: dict[str, Any]) -> dict[str, Any]:
         "type": "select",
         "proxies": [fallback["name"] for fallback in fallback_groups]
         + [regions[region_id]["name"] for region_id in ai["regions"]],
-        "include-all": ai.get("include_all_nodes", False),
+        # Use the explicit proxy-only form. It is more reliable for OpenClash
+        # when this select group also references other strategy groups.
+        "include-all-proxies": ai.get("include_all_nodes", False),
         "exclude-type": "direct",
     }
 
