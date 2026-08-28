@@ -55,17 +55,30 @@ function main(config) {
     "lazy": false
   }
 ];
-  const fallbackGroups = [];
+  const fallbackGroups = [
+  {
+    "name": "🇯🇵 AI 日本故障转移",
+    "type": "fallback",
+    "include-all": true,
+    "exclude-type": "direct",
+    "filter": "(?i)日本|日|JP|Japan|Tokyo|Osaka",
+    "url": "https://www.gstatic.com/generate_204",
+    "interval": 600,
+    "lazy": true,
+    "max-failed-times": 2
+  }
+];
   const aiGroup = {
   "name": "🤖 AI",
   "type": "select",
   "proxies": [
+    "🇯🇵 AI 日本故障转移",
     "🇯🇵 日本节点",
     "🇸🇬 新加坡节点",
     "🇺🇸 美国节点",
     "🇭🇰 香港节点"
   ],
-  "include-all": false,
+  "include-all": true,
   "exclude-type": "direct"
 };
   const mainGroupName = "良心云";
