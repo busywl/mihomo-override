@@ -25,9 +25,17 @@ main_group: "良心云"
 
 ai:
   name: "🤖 AI"
-  # 顺序就是 ClashMi/OpenClash 中 AI 组的显示顺序。
+  # 除下方的 AI 故障转移组外，保留原来的地区自动测速组作为快捷选项。
   regions:
     - japan
     - singapore
     - usa
     - hongkong
+  # 在 🤖 AI 中同时列出机场所有原始节点，便于手动固定某个出口 IP。
+  include_all_nodes: true
+  # AI 专用故障转移：只会在对应地区的节点之间切换，不按延迟自动跳转。
+  fallback_groups:
+    - name: "🇯🇵 AI 日本故障转移"
+      region: japan
+      interval: 600
+      max_failed_times: 2
