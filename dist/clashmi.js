@@ -68,23 +68,28 @@ function main(config) {
     "max-failed-times": 2
   }
 ];
+  const manualNodeGroup = {
+  "name": "🌐 AI 手动节点",
+  "type": "select",
+  "include-all": true,
+  "exclude-type": "direct"
+};
   const aiGroup = {
   "name": "🤖 AI",
   "type": "select",
   "proxies": [
     "🇯🇵 AI 日本故障转移",
+    "🌐 AI 手动节点",
     "🇯🇵 日本节点",
     "🇸🇬 新加坡节点",
     "🇺🇸 美国节点",
     "🇭🇰 香港节点"
-  ],
-  "include-all-proxies": true,
-  "exclude-type": "direct"
+  ]
 };
   const mainGroupName = "良心云";
   const aiRule = "GEOSITE,category-ai-!cn,🤖 AI";
   const fallbackGroupNames = fallbackGroups.map(function (group) { return group.name; });
-  const customGroupNames = regionNames.concat(fallbackGroupNames, [aiGroup.name]);
+  const customGroupNames = regionNames.concat(fallbackGroupNames, [manualNodeGroup.name, aiGroup.name]);
 
   if (!Array.isArray(config["proxy-groups"])) {
     config["proxy-groups"] = [];
@@ -97,7 +102,7 @@ function main(config) {
   config["proxy-groups"] = config["proxy-groups"].filter(function (group) {
     return !group || customGroupNames.indexOf(group.name) === -1;
   });
-  config["proxy-groups"] = config["proxy-groups"].concat(regionGroups, fallbackGroups, [aiGroup]);
+  config["proxy-groups"] = config["proxy-groups"].concat(regionGroups, fallbackGroups, [manualNodeGroup, aiGroup]);
 
   // Put the four region groups at the front of the existing 良心云 group.
   const mainGroup = config["proxy-groups"].find(function (group) {
