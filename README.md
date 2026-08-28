@@ -11,10 +11,10 @@
 
 OpenClash：
 
-`https://raw.githubusercontent.com/busywl/CF-Workers-SUB/main/mihomo-override/dist/openclash.conf`
+`https://raw.githubusercontent.com/busywl/mihomo-override/main/dist/openclash.conf`
 
 ClashMi：
 
-`https://raw.githubusercontent.com/busywl/CF-Workers-SUB/main/mihomo-override/dist/clashmi.js`
+`https://raw.githubusercontent.com/busywl/mihomo-override/main/dist/clashmi.js`
 
 以后只修改 `config.yaml` 并提交，Actions 完成后刷新客户端的覆写配置即可。
