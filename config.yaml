@@ -31,8 +31,9 @@ ai:
     - singapore
     - usa
     - hongkong
-  # 在 🤖 AI 中同时列出机场所有原始节点，便于手动固定某个出口 IP。
-  include_all_nodes: true
+  # 单独的手动节点组会展开机场全部原始节点，避免 OpenClash
+  # 在同一 select 组混合“自动展开节点”和“引用策略组”时丢失候选项。
+  manual_node_group: "🌐 AI 手动节点"
   # AI 专用故障转移：只会在对应地区的节点之间切换，不按延迟自动跳转。
   fallback_groups:
     - name: "🇯🇵 AI 日本故障转移"
