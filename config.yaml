@@ -1,0 +1,33 @@
+# 唯一需要维护的源配置。不要在这里填写机场订阅链接或 token。
+
+regions:
+  hongkong:
+    name: "🇭🇰 香港节点"
+    filter: "(?i)香港|港|HK|Hong Kong|HongKong"
+  japan:
+    name: "🇯🇵 日本节点"
+    filter: "(?i)日本|日|JP|Japan|Tokyo|Osaka"
+  singapore:
+    name: "🇸🇬 新加坡节点"
+    filter: "(?i)新加坡|狮城|SG|Singapore"
+  usa:
+    name: "🇺🇸 美国节点"
+    filter: "(?i)美国|美|US|USA|United States|Los Angeles|Seattle|San Jose"
+
+url_test:
+  url: "https://www.gstatic.com/generate_204"
+  interval: 300
+  tolerance: 0
+  lazy: false
+
+# 机场原订阅里的现有策略组名称；脚本会把四个地区组插到它的最前面。
+main_group: "良心云"
+
+ai:
+  name: "🤖 AI"
+  # 顺序就是 ClashMi/OpenClash 中 AI 组的显示顺序。
+  regions:
+    - japan
+    - singapore
+    - usa
+    - hongkong
